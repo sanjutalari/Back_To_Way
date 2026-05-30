@@ -20,6 +20,7 @@ A comprehensive web application for university students to report and find lost 
 - **MongoDB** - Document database
 - **PyMongo** - MongoDB driver
 - **PyJWT** - Authentication
+- **Flasgger** - Swagger UI for API documentation
 - **Werkzeug** - Password hashing & file upload handling
 
 ### Frontend
@@ -77,6 +78,14 @@ npm run dev
 
 Client runs on http://localhost:5173
 
+## Live Deployment
+
+- **Production site:** https://back-to-way.onrender.com/
+- **Swagger UI:** https://back-to-way.onrender.com/apidocs/
+- **Swagger aliases:** https://back-to-way.onrender.com/swagger and https://back-to-way.onrender.com/docs
+
+The site root now redirects to Swagger UI in production.
+
 ## API Endpoints
 
 ### Authentication
@@ -95,6 +104,11 @@ Client runs on http://localhost:5173
 - `DELETE /api/items/:id` - Delete item (protected)
 - `PATCH /api/items/:id/resolve` - Toggle item status (protected)
 - `GET /api/items/my-items` - Get user's items (protected)
+
+## Swagger Documentation
+
+The backend also exposes interactive API docs through Swagger UI at `/apidocs/`.
+Use that page to explore request payloads and test endpoints while the backend is running.
 
 ## Project Structure
 
@@ -202,6 +216,18 @@ lostandfound/
 ### CORS Errors
 
 - Verify frontend URL matches CORS configuration in `app.py`
+
+### Swagger UI Not Loading
+
+- Confirm the backend has been redeployed with the latest code
+- Open `/apidocs/`, `/swagger`, or `/docs`
+- Verify `flasgger` is installed from `backend-flask/requirements.txt`
+
+### Login or Items Return 503
+
+- Set `MONGO_URI` on Render to a reachable MongoDB instance
+- `MONGODB_URI` and `DATABASE_URL` are also supported as fallback env vars
+- The default local MongoDB URL will not work in Render
 
 ## License
 

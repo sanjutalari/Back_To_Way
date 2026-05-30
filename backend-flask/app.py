@@ -2,6 +2,7 @@ import os
 from flask import Flask, jsonify, redirect, url_for
 from flask_cors import CORS
 from flasgger import Swagger
+from pymongo.errors import PyMongoError, ServerSelectionTimeoutError
 
 from config import Config
 from models import mongo
@@ -52,6 +53,20 @@ def create_app():
     @app.errorhandler(500)
     def server_error(e):
         return jsonify({"success": False, "message": "Internal server error"}), 500
+
+    @app.errorhandler(ServerSelectionTimeoutError)
+    def database_timeout(e):
+        return jsonify({
+            "success": False,
+            "message": "Database connection failed. Set MONGO_URI on Render.",
+        }), 503
+
+    @app.errorhandler(PyMongoError)
+    def database_error(e):
+        return jsonify({
+            "success": False,
+            "message": "Database error. Check MONGO_URI on Render.",
+        }), 503
 
     return app
 
