@@ -20,6 +20,37 @@ def generate_token(user_id):
 
 @auth_bp.route("/register", methods=["POST"])
 def register():
+    """
+    Register a new user.
+    ---
+    tags:
+      - Auth
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          required:
+            - name
+            - email
+            - password
+            - phone
+          properties:
+            name:
+              type: string
+            email:
+              type: string
+            password:
+              type: string
+            phone:
+              type: string
+    responses:
+      201:
+        description: User registered successfully, returns JWT token
+      400:
+        description: Invalid input or user already exists
+    """
     data = request.get_json()
 
     if not data:
@@ -51,6 +82,33 @@ def register():
 
 @auth_bp.route("/login", methods=["POST"])
 def login():
+    """
+    Login with email and password.
+    ---
+    tags:
+      - Auth
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          required:
+            - email
+            - password
+          properties:
+            email:
+              type: string
+            password:
+              type: string
+    responses:
+      200:
+        description: Login successful, returns JWT token
+      400:
+        description: Invalid input
+      401:
+        description: Invalid credentials
+    """
     data = request.get_json()
 
     if not data:
@@ -75,4 +133,17 @@ def login():
 @auth_bp.route("/me", methods=["GET"])
 @token_required
 def get_me(current_user):
+    """
+    Get current user info.
+    ---
+    tags:
+      - Auth
+    security:
+      - Bearer: []
+    responses:
+      200:
+        description: Current user info
+      401:
+        description: Unauthorized
+    """
     return jsonify({"success": True, "user": user_to_dict(current_user)}), 200

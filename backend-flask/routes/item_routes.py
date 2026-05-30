@@ -110,6 +110,8 @@ def get_user_items(current_user):
     ---
     tags:
       - Items
+    security:
+      - Bearer: []
     responses:
       200:
         description: User items
@@ -137,6 +139,8 @@ def create_item(current_user):
     ---
     tags:
       - Items
+    security:
+      - Bearer: []
     consumes:
       - application/json
       - multipart/form-data
@@ -269,6 +273,8 @@ def resolve_item(current_user, item_id):
     ---
     tags:
       - Items
+    security:
+      - Bearer: []
     parameters:
       - in: path
         name: item_id
@@ -319,6 +325,8 @@ def update_item(current_user, item_id):
     ---
     tags:
       - Items
+    security:
+      - Bearer: []
     parameters:
       - in: path
         name: item_id
@@ -393,6 +401,8 @@ def delete_item(current_user, item_id):
     ---
     tags:
       - Items
+    security:
+      - Bearer: []
     parameters:
       - in: path
         name: item_id
