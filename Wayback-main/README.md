@@ -1,0 +1,208 @@
+# Lost & Found Hub
+
+A comprehensive web application for university students to report and find lost items on campus.
+
+## Features
+
+- **User Authentication** - JWT-based secure login and registration
+- **Item Management** - Post lost/found items with image uploads
+- **Search & Filter** - Advanced search by keyword, category, and type
+- **Tracking System** - Auto-generated tracking IDs for each report
+- **Dashboard** - Personal dashboard to manage your reports
+- **Image Upload** - Local file storage (5MB limit)
+- **Responsive Design** - Mobile-friendly UI with Tailwind CSS
+
+## Tech Stack
+
+### Backend
+
+- **Flask** - Python web framework
+- **MongoDB** - Document database
+- **PyMongo** - MongoDB driver
+- **PyJWT** - Authentication
+- **Werkzeug** - Password hashing & file upload handling
+
+### Frontend
+
+- **React 18** - UI framework
+- **Vite** - Build tool
+- **React Router** - Client-side routing
+- **Tailwind CSS** - Styling
+- **Lucide React** - Icons
+- **Axios** - HTTP client
+
+## Prerequisites
+
+- Python 3.10+
+- Node.js (v14 or higher)
+- MongoDB (running locally on `mongodb://localhost:27017`)
+
+## Installation
+
+### 1. Install Python dependencies
+
+```bash
+cd backend-flask
+pip install -r requirements.txt
+```
+
+### 2. Install frontend dependencies
+
+```bash
+cd frontend
+npm install
+```
+
+### 3. Start MongoDB
+
+Ensure MongoDB is running on `mongodb://localhost:27017`
+
+## Running the Application
+
+### Start Backend
+
+```bash
+cd backend-flask
+python app.py
+```
+
+Server runs on http://localhost:5001
+
+### Start Frontend
+
+```bash
+cd frontend
+npm run dev
+```
+
+Client runs on http://localhost:5173
+
+## API Endpoints
+
+### Authentication
+
+- `POST /api/auth/register` - Register a new user
+- `POST /api/auth/login` - Login user
+- `GET /api/auth/me` - Get current user (protected)
+
+### Items
+
+- `GET /api/items` - Get all items
+- `GET /api/items/search` - Search items (filters: keyword, category, type)
+- `GET /api/items/:id` - Get item by ID
+- `POST /api/items` - Create new item (protected, multipart/form-data)
+- `PUT /api/items/:id` - Update item (protected)
+- `DELETE /api/items/:id` - Delete item (protected)
+- `PATCH /api/items/:id/resolve` - Toggle item status (protected)
+- `GET /api/items/my-items` - Get user's items (protected)
+
+## Project Structure
+
+```
+lostandfound/
+├── backend-flask/               # Backend (Flask)
+│   ├── routes/
+│   │   ├── auth_routes.py      # Auth endpoints
+│   │   └── item_routes.py      # Item endpoints
+│   ├── middleware/
+│   │   └── auth.py             # JWT token verification
+│   ├── models.py               # MongoDB helpers
+│   ├── config.py               # App configuration
+│   ├── app.py                  # Main server file
+│   ├── uploads/                # File storage directory
+│   └── requirements.txt
+│
+├── frontend/                    # Frontend (React + Vite)
+│   ├── src/
+│   │   ├── pages/
+│   │   │   ├── Home.jsx
+│   │   │   ├── Browse.jsx
+│   │   │   ├── PostReport.jsx
+│   │   │   ├── Dashboard.jsx
+│   │   │   ├── Login.jsx
+│   │   │   └── Register.jsx
+│   │   ├── components/
+│   │   │   ├── Navigation.jsx
+│   │   │   └── ItemCard.jsx
+│   │   ├── context/
+│   │   │   └── AuthContext.jsx
+│   │   ├── api/
+│   │   │   └── axios.js
+│   │   ├── App.jsx
+│   │   ├── main.jsx
+│   │   └── index.css
+│   ├── index.html
+│   ├── vite.config.js
+│   ├── tailwind.config.js
+│   ├── postcss.config.js
+│   └── package.json
+│
+├── package.json                 # Root package.json
+└── README.md
+```
+
+## Database Schema
+
+### User Collection
+
+```json
+{
+  "name": "String (required)",
+  "email": "String (unique, required)",
+  "password_hash": "String (hashed, required)",
+  "phone": "String (required)",
+  "created_at": "Date",
+  "updated_at": "Date"
+}
+```
+
+### Item Collection
+
+```json
+{
+  "user_id": "ObjectId (ref: User)",
+  "type": "String ['Lost', 'Found']",
+  "title": "String (required)",
+  "description": "String",
+  "category": "String ['Electronics', 'Documents', 'Keys', 'Clothing', 'Accessories', 'Books', 'Other']",
+  "incident_date": "Date",
+  "image_path": "String",
+  "tracking_id": "String (auto-generated unique)",
+  "status": "String ['Active', 'Resolved']",
+  "created_at": "Date",
+  "updated_at": "Date"
+}
+```
+
+## Error Handling
+
+- All API calls wrapped in try/catch blocks
+- User-friendly error messages returned as JSON
+- JWT validation on protected routes
+- File upload validation (type and size)
+
+## Troubleshooting
+
+### MongoDB Connection Error
+
+- Ensure MongoDB is running: `mongod`
+- Verify MongoDB is listening on port 27017
+
+### Port Already in Use
+
+- Backend port 5001: `netstat -ano | findstr :5001`
+- Frontend port 5173: Kill the process using that port
+
+### File Upload Issues
+
+- Check `backend-flask/uploads/` directory exists
+- Verify file size is under 5MB
+- Ensure file is a valid image format
+
+### CORS Errors
+
+- Verify frontend URL matches CORS configuration in `app.py`
+
+## License
+
+ISC

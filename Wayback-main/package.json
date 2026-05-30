@@ -1,0 +1,23 @@
+{
+  "name": "lost-and-found",
+  "version": "1.0.0",
+  "description": "Lost & Found Application - A university campus lost and found platform",
+  "scripts": {
+    "start": "concurrently \"npm --prefix server start\" \"npm --prefix client dev\"",
+    "server": "npm --prefix server start",
+    "client": "npm --prefix client dev",
+    "server:dev": "npm --prefix server dev",
+    "install-all": "npm install && npm --prefix server install && npm --prefix client install"
+  },
+  "keywords": [
+    "lost",
+    "found",
+    "campus",
+    "university"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^8.0.1"
+  }
+}
