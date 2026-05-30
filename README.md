@@ -119,6 +119,11 @@ The site root now redirects to Swagger UI in production.
 The backend also exposes interactive API docs through Swagger UI at `/apidocs/`.
 Use that page to explore request payloads and test endpoints while the backend is running.
 
+### Swagger Authorize
+
+- **How to authorize:** Click the **Authorize** button on the Swagger UI, then paste the full Authorization header value including the "Bearer " prefix (for example: `Bearer <token>`). Swagger requires the header exactness.
+- **Tip:** If a protected operation still returns 401 after authorizing, reload the docs page; the Flasgger UI sometimes needs a refresh to attach the header to subsequent requests.
+
 ## Project Structure
 
 ```

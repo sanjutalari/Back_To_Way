@@ -10,7 +10,7 @@ from config import Config
 from models import db
 from routes.auth_routes import auth_bp
 from routes.item_routes import items_bp
-from flask_migrate import Migrate
+from flask_migrate import Migrate, upgrade
 
 
 def create_app():
@@ -52,13 +52,29 @@ def create_app():
     if app.config.get("SWAGGER_SERVER_URL"):
         swagger_template["host"] = app.config["SWAGGER_SERVER_URL"].replace("https://", "").replace("http://", "").rstrip("/")
         swagger_template["schemes"] = ["https"] if app.config["SWAGGER_SERVER_URL"].startswith("https://") else ["http"]
-    Swagger(app, config=swagger_config, template=swagger_template)
+    def _sanitize_for_js(obj):
+        if isinstance(obj, dict):
+            return {k: _sanitize_for_js(v) for k, v in obj.items()}
+        if isinstance(obj, list):
+            return [_sanitize_for_js(v) for v in obj]
+        if obj is None:
+            return ""
+        return obj
+
+    sanitized_template = _sanitize_for_js(swagger_template)
+    Swagger(app, config=swagger_config, template=sanitized_template)
 
     CORS(app, origins=app.config["CORS_ORIGINS"], supports_credentials=True)
 
     # Initialize SQLAlchemy and migrations
     db.init_app(app)
     Migrate(app, db)
+
+    with app.app_context():
+        try:
+            upgrade()
+        except Exception as exc:
+            app.logger.warning("Database migration check skipped or failed: %s", exc)
 
     os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 
