@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Upload, X } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import api from "../api/axios";
+import api, { apiOrigin } from "../api/axios";
 
 export default function EditReport() {
   const { id } = useParams();
@@ -39,7 +39,7 @@ export default function EditReport() {
         incidentDate: item.incidentDate ? item.incidentDate.split("T")[0] : "",
       });
       if (item.imagePath) {
-        setPreview(`http://localhost:5001${item.imagePath}`);
+        setPreview(`${apiOrigin}${item.imagePath}`);
       }
     } catch (error) {
       console.error("Failed to fetch item details", error);

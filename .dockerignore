@@ -1,5 +1,10 @@
 venv/
+.venv/
 __pycache__/
 .git/
 *.pyc
 .env
+backend-flask/instance/*.db
+backend-flask/lost_found.db
+frontend/node_modules/
+node_modules/

@@ -1,8 +1,10 @@
 import os
-from flask import Flask, jsonify, redirect, url_for
+from flask import Flask, jsonify, redirect, send_from_directory
 from flask_cors import CORS
 from flasgger import Swagger
+from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError, OperationalError
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from config import Config
 from models import db
@@ -14,22 +16,45 @@ from flask_migrate import Migrate
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
 
-    app.config["SWAGGER"] = {
-        "title": "Back To Way API",
-        "uiversion": 3,
+    swagger_config = {
+        "headers": [],
+        "specs": [
+            {
+                "endpoint": "apispec_1",
+                "route": "/apispec_1.json",
+                "rule_filter": lambda rule: True,
+                "model_filter": lambda tag: True,
+            }
+        ],
+        "static_url_path": "/flasgger_static",
+        "swagger_ui": True,
+        "specs_route": "/apidocs/",
+    }
+    swagger_template = {
+        "swagger": "2.0",
+        "info": {
+            "title": "Back To Way API",
+            "description": "Interactive documentation for the Back To Way backend.",
+            "version": "1.0.0",
+        },
         "securityDefinitions": {
-            "Bearer": {
+            "BearerAuth": {
                 "type": "apiKey",
                 "name": "Authorization",
                 "in": "header",
-                "description": 'JWT Authorization header using the Bearer scheme. Example: "Bearer {token}"'
+                "description": 'Paste the full JWT header value: "Bearer <token>".',
             }
-        }
+        },
+        "schemes": ["https", "http"],
     }
-    Swagger(app)
+    if app.config.get("SWAGGER_SERVER_URL"):
+        swagger_template["host"] = app.config["SWAGGER_SERVER_URL"].replace("https://", "").replace("http://", "").rstrip("/")
+        swagger_template["schemes"] = ["https"] if app.config["SWAGGER_SERVER_URL"].startswith("https://") else ["http"]
+    Swagger(app, config=swagger_config, template=swagger_template)
 
-    CORS(app, origins=["http://localhost:5173"], supports_credentials=True)
+    CORS(app, origins=app.config["CORS_ORIGINS"], supports_credentials=True)
 
     # Initialize SQLAlchemy and migrations
     db.init_app(app)
@@ -43,6 +68,15 @@ def create_app():
     @app.route("/api/health")
     def health():
         return jsonify({"success": True, "message": "Server is running"}), 200
+
+    @app.route("/api/health/db")
+    def database_health():
+        db.session.execute(text("SELECT 1"))
+        return jsonify({"success": True, "message": "Database connection is healthy"}), 200
+
+    @app.route("/uploads/<path:filename>")
+    def uploaded_file(filename):
+        return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
 
     # Redirect root to Swagger UI so the site opens to the API documentation
     @app.route("/")
@@ -67,16 +101,18 @@ def create_app():
 
     @app.errorhandler(OperationalError)
     def database_timeout(e):
+        db.session.rollback()
         return jsonify({
             "success": False,
-            "message": "Database connection failed. Set DATABASE_URL on Render.",
+            "message": "Database connection failed. Verify DATABASE_URL and run migrations.",
         }), 503
 
     @app.errorhandler(SQLAlchemyError)
     def database_error(e):
+        db.session.rollback()
         return jsonify({
             "success": False,
-            "message": "Database error. Check DATABASE_URL on Render.",
+            "message": "Database error. Verify DATABASE_URL and migration status.",
         }), 503
 
     return app

@@ -1,5 +1,6 @@
 import React from "react";
 import { MapPin, Calendar } from "lucide-react";
+import { apiOrigin } from "../api/axios";
 
 export default function ItemCard({ item }) {
   const getTypeStyles = (type) => {
@@ -28,7 +29,7 @@ export default function ItemCard({ item }) {
       <div className="relative">
         {item.imagePath ? (
           <img
-            src={`http://localhost:5001${item.imagePath}`}
+            src={`${apiOrigin}${item.imagePath}`}
             alt={item.title}
             className="w-full h-48 object-cover"
           />

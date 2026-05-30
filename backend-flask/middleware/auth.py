@@ -11,11 +11,13 @@ def token_required(f):
         token = None
         auth_header = request.headers.get("Authorization")
 
-        if auth_header and auth_header.startswith("Bearer "):
-            token = auth_header.split(" ")[1]
+        if auth_header:
+            parts = auth_header.strip().split(None, 1)
+            if len(parts) == 2 and parts[0].lower() == "bearer":
+                token = parts[1].strip()
 
         if not token:
-            return jsonify({"success": False, "message": "Not authorized to access this route"}), 401
+            return jsonify({"success": False, "message": "Missing Authorization header. Use: Bearer <token>"}), 401
 
         try:
             data = jwt.decode(
@@ -23,9 +25,12 @@ def token_required(f):
                 current_app.config["SECRET_KEY"],
                 algorithms=["HS256"],
             )
-            current_user = User.query.get(data.get("id"))
+            user_id = data.get("id") or data.get("sub")
+            current_user = User.query.get(int(user_id)) if user_id else None
             if not current_user:
                 return jsonify({"success": False, "message": "User not found"}), 401
+        except (TypeError, ValueError):
+            return jsonify({"success": False, "message": "Invalid token subject"}), 401
         except jwt.ExpiredSignatureError:
             return jsonify({"success": False, "message": "Token has expired"}), 401
         except jwt.InvalidTokenError:

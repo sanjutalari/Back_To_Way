@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import jwt
 from flask import Blueprint, current_app, jsonify, request
@@ -10,10 +10,12 @@ auth_bp = Blueprint("auth", __name__)
 
 
 def generate_token(user_id):
+    now = datetime.now(timezone.utc)
     payload = {
+        "sub": str(user_id),
         "id": user_id,
-        "exp": datetime.utcnow() + timedelta(days=current_app.config["JWT_EXPIRATION_DAYS"]),
-        "iat": datetime.utcnow(),
+        "exp": now + timedelta(days=current_app.config["JWT_EXPIRATION_DAYS"]),
+        "iat": now,
     }
     return jwt.encode(payload, current_app.config["SECRET_KEY"], algorithm="HS256")
 
@@ -139,7 +141,7 @@ def get_me(current_user):
     tags:
       - Auth
     security:
-      - Bearer: []
+      - BearerAuth: []
     responses:
       200:
         description: Current user info
