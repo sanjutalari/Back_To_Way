@@ -97,15 +97,46 @@ def create_app():
     # Redirect root to Swagger UI so the site opens to the API documentation
     @app.route("/")
     def index():
-        return redirect("/apidocs/")
+        return redirect("/safe-apidocs/")
 
     @app.route("/swagger")
     def swagger():
-        return redirect("/apidocs/")
+        return redirect("/safe-apidocs/")
 
     @app.route("/docs")
     def docs():
-        return redirect("/apidocs/")
+                return redirect("/safe-apidocs/")
+
+        # Serve a minimal, safe Swagger UI page that fetches the generated spec.
+        @app.route('/safe-apidocs/')
+        def safe_apidocs():
+                html = '''<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Back To Way API Docs</title>
+        <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@4/swagger-ui.css" />
+    </head>
+    <body>
+        <div id="swagger-ui"></div>
+        <script src="https://unpkg.com/swagger-ui-dist@4/swagger-ui-bundle.js"></script>
+        <script>
+            window.onload = function() {
+                const ui = SwaggerUIBundle({
+                    url: '/apispec_1.json',
+                    dom_id: '#swagger-ui',
+                    deepLinking: true,
+                    presets: [SwaggerUIBundle.presets.apis],
+                    layout: 'BaseLayout',
+                    validatorUrl: null
+                });
+                window.ui = ui;
+            };
+        </script>
+    </body>
+</html>'''
+                return html, 200, {'Content-Type': 'text/html'}
 
     @app.errorhandler(404)
     def not_found(e):
