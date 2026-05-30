@@ -1,5 +1,5 @@
 import os
-from flask import Flask, jsonify, redirect, send_from_directory
+from flask import Flask, jsonify, redirect, send_from_directory, request
 from flask_cors import CORS
 from flasgger import Swagger
 from sqlalchemy import text
@@ -130,6 +130,22 @@ def create_app():
             "success": False,
             "message": "Database error. Verify DATABASE_URL and migration status.",
         }), 503
+
+    @app.after_request
+    def sanitize_apidocs_response(response):
+        try:
+            p = getattr(request, 'path', '')
+            if p.startswith('/apidocs') or p == '/apispec_1.json':
+                ctype = response.content_type or ''
+                if 'application/json' in ctype or 'text/html' in ctype:
+                    text = response.get_data(as_text=True)
+                    if 'None' in text:
+                        text = text.replace('None', '""')
+                        response.set_data(text)
+                        response.headers['Content-Length'] = str(len(text.encode('utf-8')))
+        except Exception:
+            pass
+        return response
 
     return app
 
