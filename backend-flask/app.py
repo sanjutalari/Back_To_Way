@@ -40,3 +40,6 @@ if __name__ == "__main__":
     app = create_app()
     print("[OK] Server running on port", os.environ.get("PORT", 5001))
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5001)), debug=True)
+
+# Expose a module-level `app` for WSGI servers (gunicorn/render)
+app = create_app()
