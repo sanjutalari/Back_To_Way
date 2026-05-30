@@ -1,6 +1,7 @@
 import os
 from flask import Flask, jsonify, redirect, url_for
 from flask_cors import CORS
+from flasgger import Swagger
 
 from config import Config
 from models import mongo
@@ -11,6 +12,12 @@ from routes.item_routes import items_bp
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+
+    app.config["SWAGGER"] = {
+        "title": "Back To Way API",
+        "uiversion": 3,
+    }
+    Swagger(app)
 
     CORS(app, origins=["http://localhost:5173"], supports_credentials=True)
 
@@ -25,10 +32,18 @@ def create_app():
     def health():
         return jsonify({"success": True, "message": "Server is running"}), 200
 
-    # Redirect root to health endpoint so visiting the site root shows service status
+    # Redirect root to Swagger UI so the site opens to the API documentation
     @app.route("/")
     def index():
-        return redirect(url_for('health'))
+        return redirect("/apidocs/")
+
+    @app.route("/swagger")
+    def swagger():
+        return redirect("/apidocs/")
+
+    @app.route("/docs")
+    def docs():
+        return redirect("/apidocs/")
 
     @app.errorhandler(404)
     def not_found(e):

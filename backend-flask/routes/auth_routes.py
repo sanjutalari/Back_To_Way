@@ -1,10 +1,11 @@
 from datetime import datetime, timedelta
-from flask import Blueprint, request, jsonify, current_app
-from werkzeug.security import generate_password_hash, check_password_hash
-import jwt
 
-from models import mongo, user_to_dict
+import jwt
+from flask import Blueprint, current_app, jsonify, request
+from werkzeug.security import check_password_hash, generate_password_hash
+
 from middleware.auth import token_required
+from models import mongo, user_to_dict
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -20,6 +21,39 @@ def generate_token(user_id):
 
 @auth_bp.route("/register", methods=["POST"])
 def register():
+    """
+    Register a new user.
+    ---
+    tags:
+      - Auth
+    consumes:
+      - application/json
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          required:
+            - name
+            - email
+            - password
+            - phone
+          properties:
+            name:
+              type: string
+            email:
+              type: string
+            password:
+              type: string
+            phone:
+              type: string
+    responses:
+      201:
+        description: User created
+      400:
+        description: Invalid input
+    """
     data = request.get_json()
 
     if not data:
@@ -52,15 +86,44 @@ def register():
 
     token = generate_token(str(user["_id"]))
 
-    return jsonify({
-        "success": True,
-        "token": token,
-        "user": user_to_dict(user),
-    }), 201
+    return jsonify(
+        {
+            "success": True,
+            "token": token,
+            "user": user_to_dict(user),
+        }
+    ), 201
 
 
 @auth_bp.route("/login", methods=["POST"])
 def login():
+    """
+    Log in an existing user.
+    ---
+    tags:
+      - Auth
+    consumes:
+      - application/json
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          required:
+            - email
+            - password
+          properties:
+            email:
+              type: string
+            password:
+              type: string
+    responses:
+      200:
+        description: Login successful
+      401:
+        description: Invalid credentials
+    """
     data = request.get_json()
 
     if not data:
@@ -79,17 +142,32 @@ def login():
 
     token = generate_token(str(user["_id"]))
 
-    return jsonify({
-        "success": True,
-        "token": token,
-        "user": user_to_dict(user),
-    }), 200
+    return jsonify(
+        {
+            "success": True,
+            "token": token,
+            "user": user_to_dict(user),
+        }
+    ), 200
 
 
 @auth_bp.route("/me", methods=["GET"])
 @token_required
 def get_me(current_user):
-    return jsonify({
-        "success": True,
-        "user": user_to_dict(current_user),
-    }), 200
+    """
+    Get the currently authenticated user.
+    ---
+    tags:
+      - Auth
+    responses:
+      200:
+        description: Current user profile
+      401:
+        description: Unauthorized
+    """
+    return jsonify(
+        {
+            "success": True,
+            "user": user_to_dict(current_user),
+        }
+    ), 200

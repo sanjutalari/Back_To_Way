@@ -1,12 +1,13 @@
 import os
-import uuid
 import re
+import uuid
 from datetime import datetime
-from bson.objectid import ObjectId
-from flask import Blueprint, request, jsonify, current_app
 
-from models import mongo, generate_tracking_id, item_to_dict
+from bson.objectid import ObjectId
+from flask import Blueprint, current_app, jsonify, request
+
 from middleware.auth import token_required
+from models import generate_tracking_id, item_to_dict, mongo
 
 items_bp = Blueprint("items", __name__)
 
@@ -29,16 +30,49 @@ def save_upload(file):
 
 @items_bp.route("", methods=["GET"])
 def get_items():
+    """
+    Get all active items.
+    ---
+    tags:
+      - Items
+    responses:
+      200:
+        description: List of items
+    """
     items = list(mongo.db.items.find().sort("created_at", -1))
-    return jsonify({
-        "success": True,
-        "count": len(items),
-        "items": [item_to_dict(item) for item in items],
-    }), 200
+    return (
+        jsonify(
+            {
+                "success": True,
+                "count": len(items),
+                "items": [item_to_dict(item) for item in items],
+            }
+        ),
+        200,
+    )
 
 
 @items_bp.route("/search", methods=["GET"])
 def search_items():
+    """
+    Search items by keyword, category, or type.
+    ---
+    tags:
+      - Items
+    parameters:
+      - in: query
+        name: keyword
+        type: string
+      - in: query
+        name: category
+        type: string
+      - in: query
+        name: type
+        type: string
+    responses:
+      200:
+        description: Matching items
+    """
     keyword = request.args.get("keyword", "").strip()
     category = request.args.get("category", "").strip()
     item_type = request.args.get("type", "").strip()
@@ -60,29 +94,86 @@ def search_items():
 
     items = list(mongo.db.items.find(query).sort("created_at", -1))
 
-    return jsonify({
-        "success": True,
-        "count": len(items),
-        "items": [item_to_dict(item) for item in items],
-    }), 200
+    return (
+        jsonify(
+            {
+                "success": True,
+                "count": len(items),
+                "items": [item_to_dict(item) for item in items],
+            }
+        ),
+        200,
+    )
 
 
 @items_bp.route("/my-items", methods=["GET"])
 @token_required
 def get_user_items(current_user):
-    items = list(
-        mongo.db.items.find({"user_id": str(current_user["_id"])}).sort("created_at", -1)
+    """
+    Get items created by the logged-in user.
+    ---
+    tags:
+      - Items
+    responses:
+      200:
+        description: User items
+      401:
+        description: Unauthorized
+    """
+    items = list(mongo.db.items.find({"user_id": str(current_user["_id"])}).sort("created_at", -1))
+    return (
+        jsonify(
+            {
+                "success": True,
+                "count": len(items),
+                "items": [item_to_dict(item, include_user=False) for item in items],
+            }
+        ),
+        200,
     )
-    return jsonify({
-        "success": True,
-        "count": len(items),
-        "items": [item_to_dict(item, include_user=False) for item in items],
-    }), 200
 
 
 @items_bp.route("", methods=["POST"])
 @token_required
 def create_item(current_user):
+    """
+    Create a new item.
+    ---
+    tags:
+      - Items
+    consumes:
+      - application/json
+      - multipart/form-data
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          required:
+            - title
+            - category
+            - type
+            - incidentDate
+          properties:
+            title:
+              type: string
+            category:
+              type: string
+            type:
+              type: string
+            incidentDate:
+              type: string
+            description:
+              type: string
+    responses:
+      201:
+        description: Item created
+      400:
+        description: Invalid input
+      401:
+        description: Unauthorized
+    """
     if "image" in request.files:
         data = request.form
     else:
@@ -127,15 +218,38 @@ def create_item(current_user):
     result = mongo.db.items.insert_one(item)
     item["_id"] = result.inserted_id
 
-    return jsonify({
-        "success": True,
-        "message": "Item created successfully",
-        "item": item_to_dict(item),
-    }), 201
+    return (
+        jsonify(
+            {
+                "success": True,
+                "message": "Item created successfully",
+                "item": item_to_dict(item),
+            }
+        ),
+        201,
+    )
 
 
 @items_bp.route("/<item_id>", methods=["GET"])
 def get_item_by_id(item_id):
+    """
+    Get an item by ID.
+    ---
+    tags:
+      - Items
+    parameters:
+      - in: path
+        name: item_id
+        required: true
+        type: string
+    responses:
+      200:
+        description: Item details
+      400:
+        description: Invalid item ID
+      404:
+        description: Item not found
+    """
     try:
         item = mongo.db.items.find_one({"_id": ObjectId(item_id)})
     except Exception:
@@ -144,15 +258,40 @@ def get_item_by_id(item_id):
     if not item:
         return jsonify({"success": False, "message": "Item not found"}), 404
 
-    return jsonify({
-        "success": True,
-        "item": item_to_dict(item),
-    }), 200
+    return (
+        jsonify(
+            {
+                "success": True,
+                "item": item_to_dict(item),
+            }
+        ),
+        200,
+    )
 
 
 @items_bp.route("/<item_id>/resolve", methods=["PATCH"])
 @token_required
 def resolve_item(current_user, item_id):
+    """
+    Toggle an item between Active and Resolved.
+    ---
+    tags:
+      - Items
+    parameters:
+      - in: path
+        name: item_id
+        required: true
+        type: string
+    responses:
+      200:
+        description: Item status updated
+      400:
+        description: Invalid item ID
+      403:
+        description: Not authorized
+      404:
+        description: Item not found
+    """
     try:
         item = mongo.db.items.find_one({"_id": ObjectId(item_id)})
     except Exception:
@@ -172,16 +311,41 @@ def resolve_item(current_user, item_id):
     item["status"] = new_status
     item["updated_at"] = datetime.utcnow()
 
-    return jsonify({
-        "success": True,
-        "message": f"Item status updated to {new_status}",
-        "item": item_to_dict(item),
-    }), 200
+    return (
+        jsonify(
+            {
+                "success": True,
+                "message": f"Item status updated to {new_status}",
+                "item": item_to_dict(item),
+            }
+        ),
+        200,
+    )
 
 
 @items_bp.route("/<item_id>", methods=["PUT"])
 @token_required
 def update_item(current_user, item_id):
+    """
+    Update an item.
+    ---
+    tags:
+      - Items
+    parameters:
+      - in: path
+        name: item_id
+        required: true
+        type: string
+    responses:
+      200:
+        description: Item updated
+      400:
+        description: Invalid item ID
+      403:
+        description: Not authorized
+      404:
+        description: Item not found
+    """
     try:
         item = mongo.db.items.find_one({"_id": ObjectId(item_id)})
     except Exception:
@@ -227,16 +391,41 @@ def update_item(current_user, item_id):
         )
         item.update(update)
 
-    return jsonify({
-        "success": True,
-        "message": "Item updated successfully",
-        "item": item_to_dict(item),
-    }), 200
+    return (
+        jsonify(
+            {
+                "success": True,
+                "message": "Item updated successfully",
+                "item": item_to_dict(item),
+            }
+        ),
+        200,
+    )
 
 
 @items_bp.route("/<item_id>", methods=["DELETE"])
 @token_required
 def delete_item(current_user, item_id):
+    """
+    Delete an item.
+    ---
+    tags:
+      - Items
+    parameters:
+      - in: path
+        name: item_id
+        required: true
+        type: string
+    responses:
+      200:
+        description: Item deleted
+      400:
+        description: Invalid item ID
+      403:
+        description: Not authorized
+      404:
+        description: Item not found
+    """
     try:
         item = mongo.db.items.find_one({"_id": ObjectId(item_id)})
     except Exception:
