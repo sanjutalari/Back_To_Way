@@ -1,5 +1,5 @@
 import os
-from flask import Flask, jsonify
+from flask import Flask, jsonify, redirect, url_for
 from flask_cors import CORS
 
 from config import Config
@@ -24,6 +24,11 @@ def create_app():
     @app.route("/api/health")
     def health():
         return jsonify({"success": True, "message": "Server is running"}), 200
+
+    # Redirect root to health endpoint so visiting the site root shows service status
+    @app.route("/")
+    def index():
+        return redirect(url_for('health'))
 
     @app.errorhandler(404)
     def not_found(e):
