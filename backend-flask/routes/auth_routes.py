@@ -2,10 +2,9 @@ from datetime import datetime, timedelta
 
 import jwt
 from flask import Blueprint, current_app, jsonify, request
-from werkzeug.security import check_password_hash, generate_password_hash
 
+from models import db, User, user_to_dict
 from middleware.auth import token_required
-from models import mongo, user_to_dict
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -21,39 +20,6 @@ def generate_token(user_id):
 
 @auth_bp.route("/register", methods=["POST"])
 def register():
-    """
-    Register a new user.
-    ---
-    tags:
-      - Auth
-    consumes:
-      - application/json
-    parameters:
-      - in: body
-        name: body
-        required: true
-        schema:
-          type: object
-          required:
-            - name
-            - email
-            - password
-            - phone
-          properties:
-            name:
-              type: string
-            email:
-              type: string
-            password:
-              type: string
-            phone:
-              type: string
-    responses:
-      201:
-        description: User created
-      400:
-        description: Invalid input
-    """
     data = request.get_json()
 
     if not data:
@@ -67,63 +33,24 @@ def register():
     if not all([name, email, password, phone]):
         return jsonify({"success": False, "message": "Please provide all required fields"}), 400
 
-    if mongo.db.users.find_one({"email": email}):
+    if User.query.filter_by(email=email).first():
         return jsonify({"success": False, "message": "User already exists"}), 400
 
     if len(password) < 6:
         return jsonify({"success": False, "message": "Password must be at least 6 characters"}), 400
 
-    user = {
-        "name": name,
-        "email": email,
-        "password_hash": generate_password_hash(password),
-        "phone": phone,
-        "created_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow(),
-    }
-    result = mongo.db.users.insert_one(user)
-    user["_id"] = result.inserted_id
+    user = User(name=name, email=email, phone=phone)
+    user.set_password(password)
+    db.session.add(user)
+    db.session.commit()
 
-    token = generate_token(str(user["_id"]))
+    token = generate_token(user.id)
 
-    return jsonify(
-        {
-            "success": True,
-            "token": token,
-            "user": user_to_dict(user),
-        }
-    ), 201
+    return jsonify({"success": True, "token": token, "user": user_to_dict(user)}), 201
 
 
 @auth_bp.route("/login", methods=["POST"])
 def login():
-    """
-    Log in an existing user.
-    ---
-    tags:
-      - Auth
-    consumes:
-      - application/json
-    parameters:
-      - in: body
-        name: body
-        required: true
-        schema:
-          type: object
-          required:
-            - email
-            - password
-          properties:
-            email:
-              type: string
-            password:
-              type: string
-    responses:
-      200:
-        description: Login successful
-      401:
-        description: Invalid credentials
-    """
     data = request.get_json()
 
     if not data:
@@ -135,39 +62,17 @@ def login():
     if not email or not password:
         return jsonify({"success": False, "message": "Please provide email and password"}), 400
 
-    user = mongo.db.users.find_one({"email": email})
+    user = User.query.filter_by(email=email).first()
 
-    if not user or not check_password_hash(user["password_hash"], password):
+    if not user or not user.check_password(password):
         return jsonify({"success": False, "message": "Invalid credentials"}), 401
 
-    token = generate_token(str(user["_id"]))
+    token = generate_token(user.id)
 
-    return jsonify(
-        {
-            "success": True,
-            "token": token,
-            "user": user_to_dict(user),
-        }
-    ), 200
+    return jsonify({"success": True, "token": token, "user": user_to_dict(user)}), 200
 
 
 @auth_bp.route("/me", methods=["GET"])
 @token_required
 def get_me(current_user):
-    """
-    Get the currently authenticated user.
-    ---
-    tags:
-      - Auth
-    responses:
-      200:
-        description: Current user profile
-      401:
-        description: Unauthorized
-    """
-    return jsonify(
-        {
-            "success": True,
-            "user": user_to_dict(current_user),
-        }
-    ), 200
+    return jsonify({"success": True, "user": user_to_dict(current_user)}), 200

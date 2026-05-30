@@ -1,7 +1,8 @@
 from functools import wraps
 from flask import request, jsonify, current_app
-from bson.objectid import ObjectId
 import jwt
+
+from models import User
 
 
 def token_required(f):
@@ -22,8 +23,7 @@ def token_required(f):
                 current_app.config["SECRET_KEY"],
                 algorithms=["HS256"],
             )
-            from models import mongo
-            current_user = mongo.db.users.find_one({"_id": ObjectId(data["id"])})
+            current_user = User.query.get(data.get("id"))
             if not current_user:
                 return jsonify({"success": False, "message": "User not found"}), 401
         except jwt.ExpiredSignatureError:

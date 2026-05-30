@@ -3,11 +3,10 @@ import re
 import uuid
 from datetime import datetime
 
-from bson.objectid import ObjectId
 from flask import Blueprint, current_app, jsonify, request
 
 from middleware.auth import token_required
-from models import generate_tracking_id, item_to_dict, mongo
+from models import db, Item, generate_tracking_id, item_to_dict
 
 items_bp = Blueprint("items", __name__)
 
@@ -15,17 +14,17 @@ ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "webp"}
 
 
 def allowed_file(filename):
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+  return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
 def save_upload(file):
-    if file and allowed_file(file.filename):
-        ext = file.filename.rsplit(".", 1)[1].lower()
-        filename = f"image-{uuid.uuid4().hex}-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.{ext}"
-        filepath = os.path.join(current_app.config["UPLOAD_FOLDER"], filename)
-        file.save(filepath)
-        return f"/uploads/{filename}"
-    return None
+  if file and allowed_file(file.filename):
+    ext = file.filename.rsplit(".", 1)[1].lower()
+    filename = f"image-{uuid.uuid4().hex}-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.{ext}"
+    filepath = os.path.join(current_app.config["UPLOAD_FOLDER"], filename)
+    file.save(filepath)
+    return f"/uploads/{filename}"
+  return None
 
 
 @items_bp.route("", methods=["GET"])
@@ -39,16 +38,16 @@ def get_items():
       200:
         description: List of items
     """
-    items = list(mongo.db.items.find().sort("created_at", -1))
+    items = Item.query.filter_by(status="Active").order_by(Item.created_at.desc()).all()
     return (
-        jsonify(
-            {
-                "success": True,
-                "count": len(items),
-                "items": [item_to_dict(item) for item in items],
-            }
-        ),
-        200,
+      jsonify(
+        {
+          "success": True,
+          "count": len(items),
+          "items": [item_to_dict(item) for item in items],
+        }
+      ),
+      200,
     )
 
 
@@ -77,32 +76,29 @@ def search_items():
     category = request.args.get("category", "").strip()
     item_type = request.args.get("type", "").strip()
 
-    query = {"status": "Active"}
+    query = Item.query.filter_by(status="Active")
 
     if keyword:
-        pattern = re.compile(re.escape(keyword), re.IGNORECASE)
-        query["$or"] = [
-            {"title": {"$regex": pattern}},
-            {"description": {"$regex": pattern}},
-        ]
+      like = f"%{keyword}%"
+      query = query.filter((Item.title.ilike(like)) | (Item.description.ilike(like)))
 
     if category:
-        query["category"] = category
+      query = query.filter_by(category=category)
 
     if item_type:
-        query["type"] = item_type
+      query = query.filter_by(type=item_type)
 
-    items = list(mongo.db.items.find(query).sort("created_at", -1))
+    items = query.order_by(Item.created_at.desc()).all()
 
     return (
-        jsonify(
-            {
-                "success": True,
-                "count": len(items),
-                "items": [item_to_dict(item) for item in items],
-            }
-        ),
-        200,
+      jsonify(
+        {
+          "success": True,
+          "count": len(items),
+          "items": [item_to_dict(item) for item in items],
+        }
+      ),
+      200,
     )
 
 
@@ -120,16 +116,16 @@ def get_user_items(current_user):
       401:
         description: Unauthorized
     """
-    items = list(mongo.db.items.find({"user_id": str(current_user["_id"])}).sort("created_at", -1))
+    items = Item.query.filter_by(user_id=current_user.id).order_by(Item.created_at.desc()).all()
     return (
-        jsonify(
-            {
-                "success": True,
-                "count": len(items),
-                "items": [item_to_dict(item, include_user=False) for item in items],
-            }
-        ),
-        200,
+      jsonify(
+        {
+          "success": True,
+          "count": len(items),
+          "items": [item_to_dict(item, include_user=False) for item in items],
+        }
+      ),
+      200,
     )
 
 
@@ -186,47 +182,43 @@ def create_item(current_user):
     description = data.get("description", "").strip()
 
     if not all([title, category, item_type, incident_date]):
-        return jsonify({"success": False, "message": "Please provide title, category, type, and date"}), 400
+      return jsonify({"success": False, "message": "Please provide title, category, type, and date"}), 400
 
     try:
-        parsed_date = datetime.strptime(incident_date, "%Y-%m-%d")
+      parsed_date = datetime.strptime(incident_date, "%Y-%m-%d")
     except ValueError:
-        return jsonify({"success": False, "message": "Invalid date format. Use YYYY-MM-DD"}), 400
+      return jsonify({"success": False, "message": "Invalid date format. Use YYYY-MM-DD"}), 400
 
-    now = datetime.utcnow()
-
-    item = {
-        "user_id": str(current_user["_id"]),
-        "title": title,
-        "description": description,
-        "category": category,
-        "type": item_type,
-        "incident_date": parsed_date,
-        "image_path": None,
-        "tracking_id": generate_tracking_id(),
-        "status": "Active",
-        "created_at": now,
-        "updated_at": now,
-    }
+    item = Item(
+      user_id=current_user.id,
+      title=title,
+      description=description,
+      category=category,
+      type=item_type,
+      incident_date=parsed_date,
+      image_path=None,
+      tracking_id=generate_tracking_id(),
+      status="Active",
+    )
 
     if "image" in request.files:
-        file = request.files["image"]
-        image_path = save_upload(file)
-        if image_path:
-            item["image_path"] = image_path
+      file = request.files["image"]
+      image_path = save_upload(file)
+      if image_path:
+        item.image_path = image_path
 
-    result = mongo.db.items.insert_one(item)
-    item["_id"] = result.inserted_id
+    db.session.add(item)
+    db.session.commit()
 
     return (
-        jsonify(
-            {
-                "success": True,
-                "message": "Item created successfully",
-                "item": item_to_dict(item),
-            }
-        ),
-        201,
+      jsonify(
+        {
+          "success": True,
+          "message": "Item created successfully",
+          "item": item_to_dict(item),
+        }
+      ),
+      201,
     )
 
 
@@ -251,21 +243,21 @@ def get_item_by_id(item_id):
         description: Item not found
     """
     try:
-        item = mongo.db.items.find_one({"_id": ObjectId(item_id)})
+      item = Item.query.get(int(item_id))
     except Exception:
-        return jsonify({"success": False, "message": "Invalid item ID"}), 400
+      return jsonify({"success": False, "message": "Invalid item ID"}), 400
 
     if not item:
-        return jsonify({"success": False, "message": "Item not found"}), 404
+      return jsonify({"success": False, "message": "Item not found"}), 404
 
     return (
-        jsonify(
-            {
-                "success": True,
-                "item": item_to_dict(item),
-            }
-        ),
-        200,
+      jsonify(
+        {
+          "success": True,
+          "item": item_to_dict(item),
+        }
+      ),
+      200,
     )
 
 
@@ -293,33 +285,29 @@ def resolve_item(current_user, item_id):
         description: Item not found
     """
     try:
-        item = mongo.db.items.find_one({"_id": ObjectId(item_id)})
+      item = Item.query.get(int(item_id))
     except Exception:
-        return jsonify({"success": False, "message": "Invalid item ID"}), 400
+      return jsonify({"success": False, "message": "Invalid item ID"}), 400
 
     if not item:
-        return jsonify({"success": False, "message": "Item not found"}), 404
+      return jsonify({"success": False, "message": "Item not found"}), 404
 
-    if item["user_id"] != str(current_user["_id"]):
-        return jsonify({"success": False, "message": "Not authorized to resolve this item"}), 403
+    if item.user_id != current_user.id:
+      return jsonify({"success": False, "message": "Not authorized to resolve this item"}), 403
 
-    new_status = "Resolved" if item["status"] == "Active" else "Active"
-    mongo.db.items.update_one(
-        {"_id": ObjectId(item_id)},
-        {"$set": {"status": new_status, "updated_at": datetime.utcnow()}},
-    )
-    item["status"] = new_status
-    item["updated_at"] = datetime.utcnow()
+    item.status = "Resolved" if item.status == "Active" else "Active"
+    item.updated_at = datetime.utcnow()
+    db.session.commit()
 
     return (
-        jsonify(
-            {
-                "success": True,
-                "message": f"Item status updated to {new_status}",
-                "item": item_to_dict(item),
-            }
-        ),
-        200,
+      jsonify(
+        {
+          "success": True,
+          "message": f"Item status updated to {item.status}",
+          "item": item_to_dict(item),
+        }
+      ),
+      200,
     )
 
 
@@ -347,59 +335,53 @@ def update_item(current_user, item_id):
         description: Item not found
     """
     try:
-        item = mongo.db.items.find_one({"_id": ObjectId(item_id)})
+      item = Item.query.get(int(item_id))
     except Exception:
-        return jsonify({"success": False, "message": "Invalid item ID"}), 400
+      return jsonify({"success": False, "message": "Invalid item ID"}), 400
 
     if not item:
-        return jsonify({"success": False, "message": "Item not found"}), 404
+      return jsonify({"success": False, "message": "Item not found"}), 404
 
-    if item["user_id"] != str(current_user["_id"]):
-        return jsonify({"success": False, "message": "Not authorized to update this item"}), 403
+    if item.user_id != current_user.id:
+      return jsonify({"success": False, "message": "Not authorized to update this item"}), 403
 
     if "image" in request.files:
-        data = request.form
+      data = request.form
     else:
-        data = request.get_json() or {}
+      data = request.get_json() or {}
 
-    update = {}
     if data.get("title"):
-        update["title"] = data["title"].strip()
+      item.title = data["title"].strip()
     if data.get("description") is not None:
-        update["description"] = data["description"].strip()
+      item.description = data["description"].strip()
     if data.get("category"):
-        update["category"] = data["category"].strip()
+      item.category = data["category"].strip()
     if data.get("type"):
-        update["type"] = data["type"].strip()
+      item.type = data["type"].strip()
     if data.get("incidentDate"):
-        try:
-            update["incident_date"] = datetime.strptime(data["incidentDate"].strip(), "%Y-%m-%d")
-        except ValueError:
-            pass
+      try:
+        item.incident_date = datetime.strptime(data["incidentDate"].strip(), "%Y-%m-%d")
+      except ValueError:
+        pass
 
     if "image" in request.files:
-        file = request.files["image"]
-        image_path = save_upload(file)
-        if image_path:
-            update["image_path"] = image_path
+      file = request.files["image"]
+      image_path = save_upload(file)
+      if image_path:
+        item.image_path = image_path
 
-    if update:
-        update["updated_at"] = datetime.utcnow()
-        mongo.db.items.update_one(
-            {"_id": ObjectId(item_id)},
-            {"$set": update},
-        )
-        item.update(update)
+    item.updated_at = datetime.utcnow()
+    db.session.commit()
 
     return (
-        jsonify(
-            {
-                "success": True,
-                "message": "Item updated successfully",
-                "item": item_to_dict(item),
-            }
-        ),
-        200,
+      jsonify(
+        {
+          "success": True,
+          "message": "Item updated successfully",
+          "item": item_to_dict(item),
+        }
+      ),
+      200,
     )
 
 
@@ -427,16 +409,17 @@ def delete_item(current_user, item_id):
         description: Item not found
     """
     try:
-        item = mongo.db.items.find_one({"_id": ObjectId(item_id)})
+      item = Item.query.get(int(item_id))
     except Exception:
-        return jsonify({"success": False, "message": "Invalid item ID"}), 400
+      return jsonify({"success": False, "message": "Invalid item ID"}), 400
 
     if not item:
-        return jsonify({"success": False, "message": "Item not found"}), 404
+      return jsonify({"success": False, "message": "Item not found"}), 404
 
-    if item["user_id"] != str(current_user["_id"]):
-        return jsonify({"success": False, "message": "Not authorized to delete this item"}), 403
+    if item.user_id != current_user.id:
+      return jsonify({"success": False, "message": "Not authorized to delete this item"}), 403
 
-    mongo.db.items.delete_one({"_id": ObjectId(item_id)})
+    db.session.delete(item)
+    db.session.commit()
 
     return jsonify({"success": True, "message": "Item deleted successfully"}), 200

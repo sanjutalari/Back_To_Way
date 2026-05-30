@@ -17,11 +17,12 @@ A comprehensive web application for university students to report and find lost 
 ### Backend
 
 - **Flask** - Python web framework
-- **MongoDB** - Document database
-- **PyMongo** - MongoDB driver
+- **PostgreSQL / SQLite** - Relational database (Postgres recommended for production)
+- **Flask-SQLAlchemy** - ORM
+- **Flask-Migrate** - DB migrations (Alembic)
+- **psycopg2-binary** - Postgres driver
 - **PyJWT** - Authentication
 - **Flasgger** - Swagger UI for API documentation
-- **Werkzeug** - Password hashing & file upload handling
 
 ### Frontend
 
@@ -36,7 +37,7 @@ A comprehensive web application for university students to report and find lost 
 
 - Python 3.10+
 - Node.js (v14 or higher)
-- MongoDB (running locally on `mongodb://localhost:27017`)
+Postgres (for production) or SQLite (local dev). See `backend-flask/config.py` for `DATABASE_URL` fallback.
 
 ## Installation
 
@@ -54,9 +55,17 @@ cd frontend
 npm install
 ```
 
-### 3. Start MongoDB
+### 3. Initialize the database (local/dev)
 
-Ensure MongoDB is running on `mongodb://localhost:27017`
+Run migrations to create the schema (uses `DATABASE_URL` or sqlite fallback):
+
+```bash
+cd backend-flask
+set FLASK_APP=app.py
+flask db init   # only once
+flask db migrate -m "Initial"
+flask db upgrade
+```
 
 ## Running the Application
 
@@ -120,7 +129,7 @@ lostandfound/
 │   │   └── item_routes.py      # Item endpoints
 │   ├── middleware/
 │   │   └── auth.py             # JWT token verification
-│   ├── models.py               # MongoDB helpers
+│   ├── models.py               # SQLAlchemy models
 │   ├── config.py               # App configuration
 │   ├── app.py                  # Main server file
 │   ├── uploads/                # File storage directory
@@ -155,38 +164,11 @@ lostandfound/
 └── README.md
 ```
 
-## Database Schema
+## Database Schema (SQL)
 
-### User Collection
+Users table (`user`): id, name, email (unique), password_hash, phone, created_at, updated_at
 
-```json
-{
-  "name": "String (required)",
-  "email": "String (unique, required)",
-  "password_hash": "String (hashed, required)",
-  "phone": "String (required)",
-  "created_at": "Date",
-  "updated_at": "Date"
-}
-```
-
-### Item Collection
-
-```json
-{
-  "user_id": "ObjectId (ref: User)",
-  "type": "String ['Lost', 'Found']",
-  "title": "String (required)",
-  "description": "String",
-  "category": "String ['Electronics', 'Documents', 'Keys', 'Clothing', 'Accessories', 'Books', 'Other']",
-  "incident_date": "Date",
-  "image_path": "String",
-  "tracking_id": "String (auto-generated unique)",
-  "status": "String ['Active', 'Resolved']",
-  "created_at": "Date",
-  "updated_at": "Date"
-}
-```
+Items table (`item`): id, user_id (FK -> user.id), type (Lost/Found), title, description, category, incident_date, image_path, tracking_id (unique), status (Active/Resolved), created_at, updated_at
 
 ## Error Handling
 
@@ -197,10 +179,10 @@ lostandfound/
 
 ## Troubleshooting
 
-### MongoDB Connection Error
+### Database Connection Error
 
-- Ensure MongoDB is running: `mongod`
-- Verify MongoDB is listening on port 27017
+- Ensure `DATABASE_URL` is configured in production (Render/Heroku/wherever).
+- For Postgres on Render, provision a managed Postgres and set `DATABASE_URL` in the service env vars.
 
 ### Port Already in Use
 
@@ -225,9 +207,8 @@ lostandfound/
 
 ### Login or Items Return 503
 
-- Set `MONGO_URI` on Render to a reachable MongoDB instance
-- `MONGODB_URI` and `DATABASE_URL` are also supported as fallback env vars
-- The default local MongoDB URL will not work in Render
+-- Set `DATABASE_URL` on Render to a reachable Postgres instance
+-- The app falls back to `sqlite:///dev.db` when no `DATABASE_URL` is provided (not for production)
 
 ## License
 

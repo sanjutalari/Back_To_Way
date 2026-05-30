@@ -2,12 +2,13 @@ import os
 from flask import Flask, jsonify, redirect, url_for
 from flask_cors import CORS
 from flasgger import Swagger
-from pymongo.errors import PyMongoError, ServerSelectionTimeoutError
+from sqlalchemy.exc import SQLAlchemyError, OperationalError
 
 from config import Config
-from models import mongo
+from models import db
 from routes.auth_routes import auth_bp
 from routes.item_routes import items_bp
+from flask_migrate import Migrate
 
 
 def create_app():
@@ -22,7 +23,9 @@ def create_app():
 
     CORS(app, origins=["http://localhost:5173"], supports_credentials=True)
 
-    mongo.init_app(app)
+    # Initialize SQLAlchemy and migrations
+    db.init_app(app)
+    Migrate(app, db)
 
     os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 
@@ -54,18 +57,18 @@ def create_app():
     def server_error(e):
         return jsonify({"success": False, "message": "Internal server error"}), 500
 
-    @app.errorhandler(ServerSelectionTimeoutError)
+    @app.errorhandler(OperationalError)
     def database_timeout(e):
         return jsonify({
             "success": False,
-            "message": "Database connection failed. Set MONGO_URI on Render.",
+            "message": "Database connection failed. Set DATABASE_URL on Render.",
         }), 503
 
-    @app.errorhandler(PyMongoError)
+    @app.errorhandler(SQLAlchemyError)
     def database_error(e):
         return jsonify({
             "success": False,
-            "message": "Database error. Check MONGO_URI on Render.",
+            "message": "Database error. Check DATABASE_URL on Render.",
         }), 503
 
     return app
