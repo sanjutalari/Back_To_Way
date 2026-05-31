@@ -105,12 +105,12 @@ def create_app():
 
     @app.route("/docs")
     def docs():
-                return redirect("/safe-apidocs/")
+        return redirect("/safe-apidocs/")
 
-        # Serve a minimal, safe Swagger UI page that fetches the generated spec.
-        @app.route('/safe-apidocs/')
-        def safe_apidocs():
-                html = '''<!DOCTYPE html>
+    # Serve a minimal, safe Swagger UI page that fetches the generated spec.
+    @app.route('/safe-apidocs/')
+    def safe_apidocs():
+        html = '''<!DOCTYPE html>
 <html>
     <head>
         <meta charset="utf-8" />
@@ -136,7 +136,7 @@ def create_app():
         </script>
     </body>
 </html>'''
-                return html, 200, {'Content-Type': 'text/html'}
+        return html, 200, {'Content-Type': 'text/html'}
 
     @app.errorhandler(404)
     def not_found(e):
