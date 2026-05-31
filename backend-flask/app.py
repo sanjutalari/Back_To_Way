@@ -44,7 +44,7 @@ def create_app():
                 "type": "apiKey",
                 "name": "Authorization",
                 "in": "header",
-                "description": 'Paste the full JWT header value: "Bearer <token>".',
+                "description": 'Include the full Authorization header value including the "Bearer " prefix. Example: "Bearer <token>" (include the word Bearer and a space before the token).',
             }
         },
         "schemes": ["https", "http"],
