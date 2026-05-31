@@ -15,6 +15,8 @@ def token_required(f):
             parts = auth_header.strip().split(None, 1)
             if len(parts) == 2 and parts[0].lower() == "bearer":
                 token = parts[1].strip()
+            else:
+                token = auth_header.strip()
 
         if not token:
             return jsonify({"success": False, "message": "Missing Authorization header. Use: Bearer <token>"}), 401
