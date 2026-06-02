@@ -130,7 +130,7 @@ def search_items():
       query = query.filter_by(category=category)
 
     if item_type:
-      query = query.filter_by(type=item_type)
+      query = query.filter(Item.type.ilike(item_type))
 
     items = query.order_by(Item.created_at.desc()).all()
 
