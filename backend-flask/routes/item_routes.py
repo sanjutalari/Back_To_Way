@@ -4,9 +4,10 @@ import uuid
 from datetime import datetime
 
 from flask import Blueprint, current_app, jsonify, request
+from sqlalchemy import or_
 
 from middleware.auth import token_required
-from models import db, Item, generate_tracking_id, item_to_dict
+from models import db, Item, VerificationSearch, generate_tracking_id, item_to_dict
 
 items_bp = Blueprint("items", __name__)
 
@@ -25,6 +26,49 @@ def save_upload(file):
     file.save(filepath)
     return f"/uploads/{filename}"
   return None
+
+
+def _normalize_identifier(value):
+  return (value or "").strip()
+
+
+def _item_payload(data):
+  return {
+    "title": data.get("title", "").strip(),
+    "category": data.get("category", "").strip(),
+    "type": data.get("type", "").strip(),
+    "incident_date": data.get("incidentDate", "").strip(),
+    "description": data.get("description", "").strip(),
+    "brand": _normalize_identifier(data.get("brand")),
+    "model_number": _normalize_identifier(data.get("modelNumber") or data.get("model_number")),
+    "serial_number": _normalize_identifier(data.get("serialNumber") or data.get("serial_number")),
+    "imei": _normalize_identifier(data.get("imei")),
+    "product_id": _normalize_identifier(data.get("productId") or data.get("product_id")),
+    "last_seen_location": _normalize_identifier(data.get("lastSeenLocation") or data.get("last_seen_location")),
+  }
+
+
+def _apply_device_fields(item, payload):
+  item.brand = payload["brand"]
+  item.model_number = payload["model_number"]
+  item.serial_number = payload["serial_number"]
+  item.imei = payload["imei"]
+  item.product_id = payload["product_id"]
+  item.last_seen_location = payload["last_seen_location"]
+
+
+def _verification_query(params):
+  query = Item.query.filter(Item.status == "Active", Item.type.in_(["Lost", "Stolen"]))
+  clauses = []
+  if params["imei"]:
+    clauses.append(Item.imei == params["imei"])
+  if params["serial_number"]:
+    clauses.append(Item.serial_number == params["serial_number"])
+  if params["model_number"]:
+    clauses.append(Item.model_number == params["model_number"])
+  if params["product_id"]:
+    clauses.append(Item.product_id == params["product_id"])
+  return query.filter(or_(*clauses)) if clauses else None
 
 
 @items_bp.route("", methods=["GET"])
@@ -174,16 +218,17 @@ def create_item(current_user):
       401:
         description: Unauthorized
     """
-    if "image" in request.files:
+    if request.form:
         data = request.form
     else:
         data = request.get_json() or {}
 
-    title = data.get("title", "").strip()
-    category = data.get("category", "").strip()
-    item_type = data.get("type", "").strip()
-    incident_date = data.get("incidentDate", "").strip()
-    description = data.get("description", "").strip()
+    payload = _item_payload(data)
+    title = payload["title"]
+    category = payload["category"]
+    item_type = payload["type"]
+    incident_date = payload["incident_date"]
+    description = payload["description"]
 
     if not all([title, category, item_type, incident_date]):
       return jsonify({"success": False, "message": "Please provide title, category, type, and date"}), 400
@@ -204,6 +249,7 @@ def create_item(current_user):
       tracking_id=generate_tracking_id(),
       status="Active",
     )
+    _apply_device_fields(item, payload)
 
     if "image" in request.files:
       file = request.files["image"]
@@ -224,6 +270,78 @@ def create_item(current_user):
       ),
       201,
     )
+
+
+@items_bp.route("/verify", methods=["GET"])
+def verify_device():
+    """
+    Verify whether a device has active lost/stolen reports.
+    ---
+    tags:
+      - Verification
+    parameters:
+      - in: query
+        name: imei
+        type: string
+      - in: query
+        name: serialNumber
+        type: string
+      - in: query
+        name: modelNumber
+        type: string
+      - in: query
+        name: productId
+        type: string
+    responses:
+      200:
+        description: Verification result
+      400:
+        description: Missing search input
+    """
+    params = {
+      "imei": _normalize_identifier(request.args.get("imei")),
+      "serial_number": _normalize_identifier(request.args.get("serialNumber") or request.args.get("serial_number")),
+      "model_number": _normalize_identifier(request.args.get("modelNumber") or request.args.get("model_number")),
+      "product_id": _normalize_identifier(request.args.get("productId") or request.args.get("product_id")),
+    }
+
+    if not any(params.values()):
+      return jsonify({"success": False, "message": "Provide IMEI, serial number, model number, or product ID"}), 400
+
+    query = _verification_query(params)
+    matches = query.order_by(Item.created_at.desc()).all() if query else []
+    status = "REPORTED LOST/STOLEN" if matches else "SAFE"
+
+    search = VerificationSearch(
+      imei=params["imei"],
+      serial_number=params["serial_number"],
+      model_number=params["model_number"],
+      product_id=params["product_id"],
+      result_status=status,
+      matched_item_id=matches[0].id if matches else None,
+    )
+    db.session.add(search)
+    db.session.commit()
+
+    safe_reports = [
+      {
+        "reportDate": item.created_at.isoformat() if item.created_at else None,
+        "productType": item.category,
+        "brand": item.brand or "",
+        "model": item.model_number or "",
+        "reportStatus": item.status,
+        "type": item.type,
+        "trackingId": item.tracking_id,
+      }
+      for item in matches
+    ]
+
+    return jsonify({
+      "success": True,
+      "status": status,
+      "message": "This device has been reported as lost or stolen." if matches else "No reports found for this device.",
+      "reports": safe_reports,
+    }), 200
 
 
 @items_bp.route("/<item_id>", methods=["GET"])
@@ -353,7 +471,7 @@ def update_item(current_user, item_id):
     if item.user_id != current_user.id:
       return jsonify({"success": False, "message": "Not authorized to update this item"}), 403
 
-    if "image" in request.files:
+    if request.form:
       data = request.form
     else:
       data = request.get_json() or {}
@@ -371,6 +489,9 @@ def update_item(current_user, item_id):
         item.incident_date = datetime.strptime(data["incidentDate"].strip(), "%Y-%m-%d")
       except ValueError:
         pass
+
+    payload = _item_payload(data)
+    _apply_device_fields(item, payload)
 
     if "image" in request.files:
       file = request.files["image"]

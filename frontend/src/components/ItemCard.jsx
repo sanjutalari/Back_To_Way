@@ -5,14 +5,14 @@ import { apiOrigin } from "../api/axios";
 export default function ItemCard({ item }) {
   const getTypeStyles = (type) => {
     return type === "Lost"
-      ? "bg-red-100 text-red-800"
-      : "bg-green-100 text-green-800";
+      ? "bg-red-50 text-red-600 border border-red-100 shadow-sm"
+      : "bg-green-50 text-green-600 border border-green-100 shadow-sm";
   };
 
   const getStatusStyles = (status) => {
     return status === "Active"
-      ? "bg-blue-100 text-blue-800"
-      : "bg-gray-100 text-gray-800";
+      ? "bg-blue-50 text-blue-600 border border-blue-100"
+      : "bg-gray-50 text-gray-600 border border-gray-200";
   };
 
   const formatDate = (date) => {
@@ -24,31 +24,31 @@ export default function ItemCard({ item }) {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
+    <div className="group bg-white rounded-2xl shadow-sm hover:shadow-xl overflow-hidden hover:-translate-y-1 transition-all duration-300 border border-gray-100 flex flex-col h-full">
       {/* Image */}
-      <div className="relative">
+      <div className="relative overflow-hidden">
         {item.imagePath ? (
           <img
             src={`${apiOrigin}${item.imagePath}`}
             alt={item.title}
-            className="w-full h-48 object-cover"
+            className="w-full h-56 object-cover transform group-hover:scale-105 transition-transform duration-500 ease-out"
           />
         ) : (
-          <div className="w-full h-48 bg-gray-200 flex items-center justify-center">
-            <span className="text-gray-400 text-sm">No image</span>
+          <div className="w-full h-56 bg-gradient-to-br from-gray-50 to-gray-200 flex items-center justify-center transform group-hover:scale-105 transition-transform duration-500 ease-out">
+            <span className="text-gray-400 text-sm font-medium">No image provided</span>
           </div>
         )}
         {/* Type Badge */}
         <div
-          className={`absolute top-3 right-3 px-2 py-1 rounded text-xs font-semibold ${getTypeStyles(item.type)}`}
+          className={`absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-bold tracking-wide backdrop-blur-md ${getTypeStyles(item.type)}`}
         >
           {item.type}
         </div>
       </div>
 
       {/* Content */}
-      <div className="p-4">
-        <h3 className="text-lg font-bold text-gray-800 truncate mb-2">
+      <div className="p-6 flex flex-col flex-grow">
+        <h3 className="text-xl font-bold text-gray-800 truncate mb-2 group-hover:text-blue-600 transition-colors">
           {item.title}
         </h3>
 
@@ -82,27 +82,29 @@ export default function ItemCard({ item }) {
         </div>
 
         {/* Tracking ID */}
-        <div className="bg-blue-50 p-2 rounded mb-3">
-          <span className="text-xs text-gray-600">Tracking ID: </span>
+        <div className="bg-blue-50/50 p-3 rounded-xl mb-4 border border-blue-100/50 mt-auto">
+          <span className="text-xs text-gray-500 font-medium">Tracking ID: </span>
           <span className="text-sm font-mono font-bold text-blue-600">
             {item.trackingId}
           </span>
         </div>
 
         {/* Status */}
-        <div
-          className={`inline-block px-2 py-1 rounded text-xs font-semibold ${getStatusStyles(item.status)}`}
-        >
-          {item.status}
+        <div>
+          <div
+            className={`inline-block px-3 py-1 rounded-full text-xs font-bold tracking-wide ${getStatusStyles(item.status)}`}
+          >
+            {item.status}
+          </div>
         </div>
 
         {/* User Info */}
         <div className="mt-3 pt-3 border-t border-gray-200">
           <p className="text-xs text-gray-600 mb-1">
-            <strong>Email:</strong> {item.userId?.email || "N/A"}
+            <strong>Email:</strong> {item.user?.email || "N/A"}
           </p>
           <p className="text-xs text-gray-600">
-            <strong>Phone:</strong> {item.userId?.phone || "N/A"}
+            <strong>Phone:</strong> {item.user?.phone || "N/A"}
           </p>
         </div>
       </div>

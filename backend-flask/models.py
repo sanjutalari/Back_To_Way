@@ -40,12 +40,30 @@ class Item(db.Model):
     title = db.Column(db.String(255))
     description = db.Column(db.Text)
     category = db.Column(db.String(100))
+    brand = db.Column(db.String(120))
+    model_number = db.Column(db.String(120), index=True)
+    serial_number = db.Column(db.String(160), index=True)
+    imei = db.Column(db.String(80), index=True)
+    product_id = db.Column(db.String(120), index=True)
+    last_seen_location = db.Column(db.String(255))
     incident_date = db.Column(db.DateTime)
     image_path = db.Column(db.String(255))
     tracking_id = db.Column(db.String(64), unique=True, index=True)
     status = db.Column(db.String(20), default='Active')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class VerificationSearch(db.Model):
+    __tablename__ = 'verification_search'
+    id = db.Column(db.Integer, primary_key=True)
+    imei = db.Column(db.String(80), index=True)
+    serial_number = db.Column(db.String(160), index=True)
+    model_number = db.Column(db.String(120), index=True)
+    product_id = db.Column(db.String(120), index=True)
+    result_status = db.Column(db.String(40), nullable=False)
+    matched_item_id = db.Column(db.Integer, db.ForeignKey('item.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
 def user_to_dict(user):
@@ -64,11 +82,18 @@ def item_to_dict(item, include_user=True):
         return None
     result = {
         'id': item.id,
+        '_id': item.id,
         'userId': item.user_id,
         'type': item.type,
         'title': item.title,
         'description': item.description or '',
         'category': item.category,
+        'brand': item.brand or '',
+        'modelNumber': item.model_number or '',
+        'serialNumber': item.serial_number or '',
+        'imei': item.imei or '',
+        'productId': item.product_id or '',
+        'lastSeenLocation': item.last_seen_location or '',
         'incidentDate': item.incident_date.isoformat() if item.incident_date else None,
         'imagePath': item.image_path,
         'trackingId': item.tracking_id,
@@ -79,4 +104,3 @@ def item_to_dict(item, include_user=True):
     if include_user and item.user:
         result['user'] = user_to_dict(item.user)
     return result
-

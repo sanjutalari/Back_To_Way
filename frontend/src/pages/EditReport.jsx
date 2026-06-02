@@ -14,6 +14,12 @@ export default function EditReport() {
     category: "Electronics",
     type: "Lost",
     incidentDate: "",
+    brand: "",
+    modelNumber: "",
+    serialNumber: "",
+    imei: "",
+    productId: "",
+    lastSeenLocation: "",
   });
   const [image, setImage] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -37,6 +43,12 @@ export default function EditReport() {
         category: item.category || "Electronics",
         type: item.type || "Lost",
         incidentDate: item.incidentDate ? item.incidentDate.split("T")[0] : "",
+        brand: item.brand || "",
+        modelNumber: item.modelNumber || "",
+        serialNumber: item.serialNumber || "",
+        imei: item.imei || "",
+        productId: item.productId || "",
+        lastSeenLocation: item.lastSeenLocation || "",
       });
       if (item.imagePath) {
         setPreview(`${apiOrigin}${item.imagePath}`);
@@ -110,6 +122,12 @@ export default function EditReport() {
       if (formData.incidentDate) {
         formDataToSend.append("incidentDate", formData.incidentDate);
       }
+      formDataToSend.append("brand", formData.brand);
+      formDataToSend.append("modelNumber", formData.modelNumber);
+      formDataToSend.append("serialNumber", formData.serialNumber);
+      formDataToSend.append("imei", formData.imei);
+      formDataToSend.append("productId", formData.productId);
+      formDataToSend.append("lastSeenLocation", formData.lastSeenLocation);
 
       if (image) {
         formDataToSend.append("image", image);
@@ -225,6 +243,31 @@ export default function EditReport() {
               required
               max={new Date().toISOString().split("T")[0]}
             />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            {[
+              ["brand", "Brand", "Apple, Dell, Samsung"],
+              ["modelNumber", "Model Number", "A2485, XPS-13"],
+              ["serialNumber", "Serial Number", "Device serial"],
+              ["imei", "IMEI", "Mobile device IMEI"],
+              ["productId", "Product ID", "Asset tag or product ID"],
+              ["lastSeenLocation", "Last Seen Location", "Library, station, campus gate"],
+            ].map(([name, label, placeholder]) => (
+              <div key={name}>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  {label}
+                </label>
+                <input
+                  type="text"
+                  name={name}
+                  value={formData[name]}
+                  onChange={handleInputChange}
+                  placeholder={placeholder}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            ))}
           </div>
 
           {/* Description */}

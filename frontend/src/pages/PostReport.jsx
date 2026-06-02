@@ -13,6 +13,12 @@ export default function PostReport() {
     category: "Electronics",
     type: "Lost",
     incidentDate: "",
+    brand: "",
+    modelNumber: "",
+    serialNumber: "",
+    imei: "",
+    productId: "",
+    lastSeenLocation: "",
   });
   const [image, setImage] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -84,6 +90,12 @@ export default function PostReport() {
       formDataToSend.append("category", formData.category);
       formDataToSend.append("type", formData.type);
       formDataToSend.append("incidentDate", formData.incidentDate);
+      formDataToSend.append("brand", formData.brand);
+      formDataToSend.append("modelNumber", formData.modelNumber);
+      formDataToSend.append("serialNumber", formData.serialNumber);
+      formDataToSend.append("imei", formData.imei);
+      formDataToSend.append("productId", formData.productId);
+      formDataToSend.append("lastSeenLocation", formData.lastSeenLocation);
 
       if (image) {
         formDataToSend.append("image", image);
@@ -197,6 +209,87 @@ export default function PostReport() {
               required
               max={new Date().toISOString().split("T")[0]}
             />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Brand
+              </label>
+              <input
+                type="text"
+                name="brand"
+                value={formData.brand}
+                onChange={handleInputChange}
+                placeholder="Apple, Dell, Samsung"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Model Number
+              </label>
+              <input
+                type="text"
+                name="modelNumber"
+                value={formData.modelNumber}
+                onChange={handleInputChange}
+                placeholder="A2485, XPS-13"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Serial Number
+              </label>
+              <input
+                type="text"
+                name="serialNumber"
+                value={formData.serialNumber}
+                onChange={handleInputChange}
+                placeholder="Device serial"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                IMEI
+              </label>
+              <input
+                type="text"
+                name="imei"
+                value={formData.imei}
+                onChange={handleInputChange}
+                placeholder="Mobile device IMEI"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Product ID
+              </label>
+              <input
+                type="text"
+                name="productId"
+                value={formData.productId}
+                onChange={handleInputChange}
+                placeholder="Asset tag or product ID"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Last Seen Location
+              </label>
+              <input
+                type="text"
+                name="lastSeenLocation"
+                value={formData.lastSeenLocation}
+                onChange={handleInputChange}
+                placeholder="Library, station, campus gate"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
           </div>
 
           {/* Description */}

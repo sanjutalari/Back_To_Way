@@ -9,8 +9,10 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from config import Config
 from models import db
 from routes.auth_routes import auth_bp
-from routes.item_routes import items_bp
+from routes.item_routes import create_item, items_bp, verify_device
+from routes.admin_routes import admin_bp
 from flask_migrate import Migrate, upgrade
+from middleware.rate_limit import RateLimiter
 
 
 def create_app():
@@ -70,6 +72,8 @@ def create_app():
     db.init_app(app)
     Migrate(app, db)
 
+    RateLimiter.init_app(app)
+
     with app.app_context():
         try:
             upgrade()
@@ -80,6 +84,12 @@ def create_app():
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(items_bp, url_prefix="/api/items")
+    app.register_blueprint(admin_bp)
+    app.add_url_rule("/api/verify", view_func=verify_device, methods=["GET"])
+    app.add_url_rule("/api/device/register", endpoint="device_register", view_func=create_item, methods=["POST"])
+    app.add_url_rule("/api/report/lost", endpoint="report_lost", view_func=create_item, methods=["POST"])
+    app.add_url_rule("/api/report/found", endpoint="report_found", view_func=create_item, methods=["POST"])
+    app.add_url_rule("/api/recovery", endpoint="recovery", view_func=create_item, methods=["POST"])
 
     @app.route("/api/health")
     def health():

@@ -9,6 +9,8 @@ import EditReport from "./pages/EditReport";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import Verify from "./pages/Verify";
+import Admin from "./pages/Admin";
 
 function App() {
   return (
@@ -21,6 +23,8 @@ function App() {
           <Route path="/post" element={<PostReport />} />
           <Route path="/edit/:id" element={<EditReport />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/verify" element={<Verify />} />
+          <Route path="/admin" element={<Admin />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
         </Routes>

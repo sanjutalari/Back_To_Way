@@ -1,7 +1,21 @@
 import React, { useState, useEffect } from "react";
-import { Search, Filter } from "lucide-react";
+import { Search, Filter, Layers } from "lucide-react";
+import { motion } from "framer-motion";
 import api from "../api/axios";
 import ItemCard from "../components/ItemCard";
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.05 }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+};
 
 export default function Browse() {
   const [items, setItems] = useState([]);
@@ -62,53 +76,60 @@ export default function Browse() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
-      <div className="container mx-auto px-4">
+    <div className="min-h-screen bg-gray-50/50 py-12 pt-24">
+      <div className="container mx-auto px-4 max-w-7xl">
         {/* Header */}
-        <h1 className="text-4xl font-bold text-gray-800 mb-2">Browse Items</h1>
-        <p className="text-gray-600 mb-8">
-          Search through all lost and found reports
-        </p>
+        <div className="mb-10 text-center max-w-2xl mx-auto">
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 tracking-tight">Browse Registry</h1>
+          <p className="text-lg text-gray-600">
+            Search our global database of lost and found devices.
+          </p>
+        </div>
 
         {/* Search Bar */}
-        <div className="mb-8">
-          <div className="relative">
-            <Search className="absolute left-4 top-3 text-gray-400" size={20} />
+        <div className="mb-10 max-w-4xl mx-auto">
+          <div className="relative group">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <Search className="text-gray-400 group-focus-within:text-blue-500 transition-colors" size={22} />
+            </div>
             <input
               type="text"
-              placeholder="Search items by title or description..."
+              placeholder="Search items by title, tracking ID, or description..."
               value={searchTerm}
               onChange={(e) => handleSearch(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-12 pr-4 py-4 bg-white border border-gray-200 rounded-2xl shadow-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-gray-800 placeholder-gray-400 text-lg"
             />
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 lg:gap-12">
           {/* Filters Sidebar */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow p-6 sticky top-4">
-              <div className="flex items-center gap-2 mb-4">
-                <Filter size={20} className="text-gray-700" />
-                <h3 className="text-lg font-bold text-gray-800">Filters</h3>
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sticky top-28">
+              <div className="flex items-center gap-2 mb-6 pb-4 border-b border-gray-100">
+                <Filter size={20} className="text-blue-600" />
+                <h3 className="text-lg font-bold text-gray-900">Filters</h3>
               </div>
 
               {/* Type Filter */}
-              <div className="mb-6">
-                <h4 className="font-semibold text-gray-700 mb-3">Item Type</h4>
-                <div className="space-y-2">
+              <div className="mb-8">
+                <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Report Type</h4>
+                <div className="space-y-3">
                   {["Lost", "Found"].map((type) => (
                     <label
                       key={type}
-                      className="flex items-center gap-3 cursor-pointer"
+                      className="flex items-center gap-3 cursor-pointer group"
                     >
+                      <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${selectedType === type ? 'bg-blue-600 border-blue-600' : 'border-gray-300 group-hover:border-blue-400'}`}>
+                        {selectedType === type && <div className="w-2.5 h-2.5 bg-white rounded-sm" />}
+                      </div>
                       <input
                         type="checkbox"
                         checked={selectedType === type}
                         onChange={() => handleTypeFilter(type)}
-                        className="w-4 h-4"
+                        className="hidden"
                       />
-                      <span className="text-gray-700">{type}</span>
+                      <span className={`font-medium transition-colors ${selectedType === type ? 'text-gray-900' : 'text-gray-600 group-hover:text-gray-900'}`}>{type}</span>
                     </label>
                   ))}
                 </div>
@@ -116,20 +137,23 @@ export default function Browse() {
 
               {/* Category Filter */}
               <div>
-                <h4 className="font-semibold text-gray-700 mb-3">Category</h4>
-                <div className="space-y-2">
+                <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Category</h4>
+                <div className="space-y-3">
                   {categories.map((category) => (
                     <label
                       key={category}
-                      className="flex items-center gap-3 cursor-pointer"
+                      className="flex items-center gap-3 cursor-pointer group"
                     >
+                      <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${selectedCategory === category ? 'bg-blue-600 border-blue-600' : 'border-gray-300 group-hover:border-blue-400'}`}>
+                        {selectedCategory === category && <div className="w-2.5 h-2.5 bg-white rounded-sm" />}
+                      </div>
                       <input
                         type="checkbox"
                         checked={selectedCategory === category}
                         onChange={() => handleCategoryFilter(category)}
-                        className="w-4 h-4"
+                        className="hidden"
                       />
-                      <span className="text-gray-700 text-sm">{category}</span>
+                      <span className={`font-medium transition-colors ${selectedCategory === category ? 'text-gray-900' : 'text-gray-600 group-hover:text-gray-900'}`}>{category}</span>
                     </label>
                   ))}
                 </div>
@@ -140,29 +164,45 @@ export default function Browse() {
           {/* Items Grid */}
           <div className="lg:col-span-3">
             {loading ? (
-              <div className="text-center py-12">
-                <p className="text-gray-500">Loading items...</p>
+              <div className="flex flex-col items-center justify-center py-24">
+                <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4"></div>
+                <p className="text-gray-500 font-medium">Loading items...</p>
               </div>
             ) : items.length > 0 ? (
-              <div>
-                <p className="text-gray-600 mb-6 font-semibold">
-                  Found {items.length} item{items.length !== 1 ? "s" : ""}
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+              <motion.div 
+                variants={containerVariants}
+                initial="hidden"
+                animate="show"
+              >
+                <div className="flex items-center justify-between mb-6">
+                  <p className="text-gray-600 font-medium bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-100">
+                    Showing <span className="font-bold text-gray-900">{items.length}</span> result{items.length !== 1 ? "s" : ""}
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                   {items.map((item) => (
-                    <ItemCard key={item._id} item={item} />
+                    <motion.div key={item._id} variants={itemVariants}>
+                      <ItemCard item={item} />
+                    </motion.div>
                   ))}
                 </div>
-              </div>
+              </motion.div>
             ) : (
-              <div className="text-center py-12 bg-white rounded-lg">
-                <p className="text-gray-500 text-lg">
-                  No items found matching your search
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="text-center py-24 bg-white rounded-2xl border border-gray-100 shadow-sm"
+              >
+                <div className="bg-gray-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Layers className="text-gray-400" size={32} />
+                </div>
+                <p className="text-gray-900 text-xl font-bold mb-2">
+                  No matches found
                 </p>
-                <p className="text-gray-400 mt-2">
-                  Try adjusting your search or filters
+                <p className="text-gray-500">
+                  Try adjusting your search terms or clearing your filters.
                 </p>
-              </div>
+              </motion.div>
             )}
           </div>
         </div>
