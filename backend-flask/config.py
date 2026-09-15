@@ -31,7 +31,7 @@ class Config:
     JWT_EXPIRATION_DAYS = int(os.environ.get("JWT_EXPIRATION_DAYS", "7"))
     CORS_ORIGINS = _csv_env(
         "CORS_ORIGINS",
-        "http://localhost:5173,https://back-to-way.onrender.com",
+        "http://localhost:5173,https://back-to-way.onrender.com,https://back-to-way.vercel.app",
     )
     SWAGGER_SERVER_URL = os.environ.get("SWAGGER_SERVER_URL")
     UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
