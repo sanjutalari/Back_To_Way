@@ -2,7 +2,9 @@ import axios from "axios";
 
 const defaultBaseURL = window.location.hostname.endsWith("onrender.com")
   ? `${window.location.origin}/api`
-  : "http://localhost:5001/api";
+  : window.location.hostname.endsWith("vercel.app")
+    ? "https://back-to-way.onrender.com/api"
+    : "http://localhost:5001/api";
 
 export const apiOrigin = (import.meta.env.VITE_API_BASE_URL || defaultBaseURL).replace(/\/api\/?$/, "");
 
